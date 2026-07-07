@@ -1,0 +1,23 @@
+using FluentValidation;
+using InventoryMS.DTOs.Users;
+using InventoryMS.Helpers;
+
+namespace InventoryMS.Validators;
+
+public sealed class UserUpdateDtoValidator : AbstractValidator<UserUpdateDto>
+{
+    public UserUpdateDtoValidator()
+    {
+        RuleFor(user => user.FirstName).NotEmpty().MaximumLength(50);
+        RuleFor(user => user.LastName).NotEmpty().MaximumLength(50);
+        RuleFor(user => user.Email).NotEmpty().EmailAddress().MaximumLength(200);
+        RuleFor(user => user.Phone).NotEmpty().MaximumLength(20);
+        RuleFor(user => user.Address).NotEmpty().MaximumLength(250);
+        RuleFor(user => user.Gender).NotEmpty().MaximumLength(20);
+        RuleFor(user => user.Age).InclusiveBetween(18, 120);
+        RuleFor(user => user.Role).NotEmpty().Must(role =>
+            string.Equals(role, RoleName.Admin, System.StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, RoleName.Owner, System.StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, RoleName.Staff, System.StringComparison.OrdinalIgnoreCase));
+    }
+}
