@@ -1,12 +1,9 @@
-using AutoMapper;
 using FluentValidation;
-using FluentValidation.AspNetCore;
 using InventoryMS.Data;
 using InventoryMS.Helpers;
 using InventoryMS.Interfaces;
 using InventoryMS.Mappings;
 using InventoryMS.Middleware;
-using InventoryMS.Models;
 using InventoryMS.Repositories;
 using InventoryMS.Services;
 using InventoryMS.Validators;
@@ -23,9 +20,11 @@ DotNetEnv.Env.Load();
 
 builder.Configuration.AddEnvironmentVariables();
 
-// Add Controllers and FluentValidation
-builder.Services.AddControllers();
-builder.Services.AddFluentValidationAutoValidation();
+// Add Controllers with Validation Filter
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<InventoryMS.Middleware.ValidationFilter>();
+});
 builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestDtoValidator>();
 
 // Add AutoMapper
@@ -59,7 +58,7 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IReportingService, ReportingService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
-builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.AddScoped<IPasswordHasher<InventoryMS.Models.User>, PasswordHasher<InventoryMS.Models.User>>();
 
 // Auth Configurations
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

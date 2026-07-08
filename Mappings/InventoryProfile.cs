@@ -42,16 +42,19 @@ public sealed class InventoryProfile : Profile
 
         // Product mapping
         CreateMap<Product, ProductResponseDto>()
+            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.ProductDesc))
             .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.ProductPrice))
             .ForMember(dest => dest.CreatedDate, opt => opt.MapFrom(src => src.CreatedAt))
             .ForMember(dest => dest.SupplierName, opt => opt.MapFrom(src => src.Supplier != null ? src.Supplier.SupplierName : string.Empty));
         CreateMap<ProductCreateDto, Product>()
+            .ForMember(dest => dest.ProductDesc, opt => opt.MapFrom(src => src.Description))
             .ForMember(dest => dest.ProductPrice, opt => opt.MapFrom(src => src.Price))
             .ForMember(dest => dest.Supplier, opt => opt.Ignore())
             .ForMember(dest => dest.OrderItems, opt => opt.Ignore())
             .ForMember(dest => dest.ProductId, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
         CreateMap<ProductUpdateDto, Product>()
+            .ForMember(dest => dest.ProductDesc, opt => opt.MapFrom(src => src.Description))
             .ForMember(dest => dest.ProductPrice, opt => opt.MapFrom(src => src.Price))
             .ForMember(dest => dest.Supplier, opt => opt.Ignore())
             .ForMember(dest => dest.OrderItems, opt => opt.Ignore())
