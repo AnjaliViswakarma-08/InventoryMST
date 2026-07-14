@@ -1,6 +1,6 @@
 using InventoryMS.Data;
 using InventoryMS.DTOs.Reports;
-using InventoryMS.Interfaces;
+using InventoryMS.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace InventoryMS.Repositories;

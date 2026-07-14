@@ -1,5 +1,5 @@
 using InventoryMS.Helpers;
-using InventoryMS.Interfaces;
+using InventoryMS.Services.Interfaces;
 using InventoryMS.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;

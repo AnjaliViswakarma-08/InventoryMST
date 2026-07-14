@@ -1,6 +1,6 @@
 using InventoryMS.DTOs.Suppliers;
 
-namespace InventoryMS.Interfaces;
+namespace InventoryMS.Services.Interfaces;
 
 public interface ISupplierService
 {

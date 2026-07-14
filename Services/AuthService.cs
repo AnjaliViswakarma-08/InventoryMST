@@ -1,7 +1,7 @@
 using InventoryMS.Data;
 using InventoryMS.DTOs.Auth;
 using InventoryMS.Helpers;
-using InventoryMS.Interfaces;
+using InventoryMS.Services.Interfaces;
 using InventoryMS.Models;
 using InventoryMS.Exceptions;
 using Microsoft.AspNetCore.Identity;

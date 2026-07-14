@@ -1,6 +1,6 @@
 using InventoryMS.DTOs.Suppliers;
 using InventoryMS.Helpers;
-using InventoryMS.Interfaces;
+using InventoryMS.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -34,7 +34,7 @@ public sealed class SupplierController : ControllerBase
         return Ok(ApiResponse<SupplierResponseDto>.Ok(supplier));
     }
 
-    [Authorize(Roles = "Owner,Staff")]
+    [Authorize(Roles = "Owner,AdminStaff,EditorStaff")]
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<SupplierResponseDto>), StatusCodes.Status201Created)]
     public async Task<ActionResult<ApiResponse<SupplierResponseDto>>> Create([FromBody] SupplierCreateDto dto, CancellationToken cancellationToken)
@@ -43,7 +43,7 @@ public sealed class SupplierController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = supplier.SupplierId }, ApiResponse<SupplierResponseDto>.Ok(supplier, "Supplier created successfully."));
     }
 
-    [Authorize(Roles = "Owner,Staff")]
+    [Authorize(Roles = "Owner,AdminStaff,EditorStaff")]
     [HttpPut("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<SupplierResponseDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<SupplierResponseDto>>> Update(int id, [FromBody] SupplierUpdateDto dto, CancellationToken cancellationToken)
@@ -52,7 +52,7 @@ public sealed class SupplierController : ControllerBase
         return Ok(ApiResponse<SupplierResponseDto>.Ok(supplier, "Supplier updated successfully."));
     }
 
-    [Authorize(Roles = "Owner,Staff")]
+    [Authorize(Roles = "Owner,AdminStaff")]
     [HttpDelete("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<string>>> Delete(int id, CancellationToken cancellationToken)

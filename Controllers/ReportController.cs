@@ -1,6 +1,6 @@
 using InventoryMS.DTOs.Reports;
 using InventoryMS.Helpers;
-using InventoryMS.Interfaces;
+using InventoryMS.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

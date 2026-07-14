@@ -1,6 +1,6 @@
 using InventoryMS.DTOs.Orders;
 
-namespace InventoryMS.Interfaces;
+namespace InventoryMS.Services.Interfaces;
 
 public interface IOrderService
 {

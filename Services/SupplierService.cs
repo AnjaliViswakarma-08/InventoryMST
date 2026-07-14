@@ -2,7 +2,8 @@ using AutoMapper;
 using InventoryMS.Data;
 using InventoryMS.DTOs.Suppliers;
 using InventoryMS.Helpers;
-using InventoryMS.Interfaces;
+using InventoryMS.Services.Interfaces;
+using InventoryMS.Repositories.Interfaces;
 using InventoryMS.Exceptions;
 
 namespace InventoryMS.Services;

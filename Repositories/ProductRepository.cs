@@ -1,5 +1,5 @@
 using InventoryMS.Data;
-using InventoryMS.Interfaces;
+using InventoryMS.Repositories.Interfaces;
 using InventoryMS.Models;
 using Microsoft.EntityFrameworkCore;
 

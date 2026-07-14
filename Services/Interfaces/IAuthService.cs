@@ -1,6 +1,6 @@
 using InventoryMS.DTOs.Auth;
 
-namespace InventoryMS.Interfaces;
+namespace InventoryMS.Services.Interfaces;
 
 public interface IAuthService
 {

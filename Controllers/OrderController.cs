@@ -1,6 +1,6 @@
 using InventoryMS.DTOs.Orders;
 using InventoryMS.Helpers;
-using InventoryMS.Interfaces;
+using InventoryMS.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -38,6 +38,7 @@ public sealed class OrderController : ControllerBase
     }
 
     /// <summary>Creates a new order.</summary>
+    [Authorize(Roles = "Owner,AdminStaff,EditorStaff")]
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<OrderResponseDto>), StatusCodes.Status201Created)]
     public async Task<ActionResult<ApiResponse<OrderResponseDto>>> Create([FromBody] OrderCreateDto dto, CancellationToken cancellationToken)
@@ -47,6 +48,7 @@ public sealed class OrderController : ControllerBase
     }
 
     /// <summary>Updates an order.</summary>
+    [Authorize(Roles = "Owner,AdminStaff,EditorStaff")]
     [HttpPut("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<OrderResponseDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<OrderResponseDto>>> Update(int id, [FromBody] OrderCreateDto dto, CancellationToken cancellationToken)
@@ -56,6 +58,7 @@ public sealed class OrderController : ControllerBase
     }
 
     /// <summary>Deletes an order.</summary>
+    [Authorize(Roles = "Owner,AdminStaff")]
     [HttpDelete("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<string>>> Delete(int id, CancellationToken cancellationToken)

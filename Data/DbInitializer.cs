@@ -34,7 +34,7 @@ END;");
 
         if (!await dbContext.Users.AnyAsync())
         {
-            var firstUser = new User
+            var owner = new User
             {
                 Firstname = "Aman",
                 Lastname = "Gupta",
@@ -46,9 +46,9 @@ END;");
                 Role = RoleName.Owner,
                 CreatedAt = DateTime.UtcNow
             };
-            firstUser.PasswordHash = passwordHasher.HashPassword(firstUser, "Admin@123");
+            owner.PasswordHash = passwordHasher.HashPassword(owner, "Admin@123");
 
-            var secUser = new User
+            var hrUser = new User
             {
                 Firstname = "Surabhi",
                 Lastname = "Dash",
@@ -56,14 +56,56 @@ END;");
                 Gender = "Female",
                 Address = "Patia",
                 Phone = "+10000000002",
-                Email = "shopkeeper@ims.local",
-                Role = RoleName.Staff,
+                Email = "hr@ims.local",
+                Role = RoleName.HR,
                 CreatedAt = DateTime.UtcNow
             };
-            secUser.PasswordHash = passwordHasher.HashPassword(secUser, "Manager@123");
+            hrUser.PasswordHash = passwordHasher.HashPassword(hrUser, "HR@12345");
+
+            var adminStaff = new User
+            {
+                Firstname = "Raj",
+                Lastname = "Kumar",
+                Age = 28,
+                Gender = "Male",
+                Address = "Bhubaneswar",
+                Phone = "+10000000003",
+                Email = "adminstaff@ims.local",
+                Role = RoleName.AdminStaff,
+                CreatedAt = DateTime.UtcNow
+            };
+            adminStaff.PasswordHash = passwordHasher.HashPassword(adminStaff, "AdminStaff@123");
+
+            var viewerStaff = new User
+            {
+                Firstname = "Priya",
+                Lastname = "Patel",
+                Age = 25,
+                Gender = "Female",
+                Address = "Cuttack",
+                Phone = "+10000000004",
+                Email = "viewerstaff@ims.local",
+                Role = RoleName.ViewerStaff,
+                CreatedAt = DateTime.UtcNow
+            };
+            viewerStaff.PasswordHash = passwordHasher.HashPassword(viewerStaff, "ViewerStaff@123");
+
+            var editorStaff = new User
+            {
+                Firstname = "Ankit",
+                Lastname = "Singh",
+                Age = 27,
+                Gender = "Male",
+                Address = "Puri",
+                Phone = "+10000000005",
+                Email = "editorstaff@ims.local",
+                Role = RoleName.EditorStaff,
+                CreatedAt = DateTime.UtcNow
+            };
+            editorStaff.PasswordHash = passwordHasher.HashPassword(editorStaff, "EditorStaff@123");
 
 
-            await dbContext.Users.AddRangeAsync(firstUser, secUser);
+            await dbContext.Users.AddRangeAsync(owner, hrUser, adminStaff, viewerStaff, editorStaff);
             await dbContext.SaveChangesAsync();
         }
 

@@ -1,11 +1,12 @@
 using FluentValidation;
 using InventoryMS.Data;
 using InventoryMS.Helpers;
-using InventoryMS.Interfaces;
 using InventoryMS.Mappings;
 using InventoryMS.Middleware;
 using InventoryMS.Repositories;
+using InventoryMS.Repositories.Interfaces;
 using InventoryMS.Services;
+using InventoryMS.Services.Interfaces;
 using InventoryMS.Validators;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -13,12 +14,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
-using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
-DotNetEnv.Env.Load();
-
-builder.Configuration.AddEnvironmentVariables();
 
 // Add Controllers with Validation Filter
 builder.Services.AddControllers(options =>
@@ -28,16 +25,10 @@ builder.Services.AddControllers(options =>
 builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestDtoValidator>();
 
 // Add AutoMapper
-builder.Services.AddAutoMapper(typeof(InventoryProfile));
+builder.Services.AddAutoMapper(typeof(EntityToDtoProfile), typeof(DtoToEntityProfile));
 
 // JWT Configurations
-builder.Services.Configure<JwtOptions>(options =>
-{
-    options.Issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "InventoryMS";
-    options.Audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "InventoryMS";
-    options.Key = Environment.GetEnvironmentVariable("JWT_KEY") ?? "InventoryMS_SUPER_SECRET_KEY_CHANGE_ME_1234567890";
-    options.ExpiryMinutes = int.TryParse(Environment.GetEnvironmentVariable("JWT_EXPIRY_MINUTES"), out var exp) ? exp : 60;
-});
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 
 // Configure AppDbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -61,13 +52,14 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IPasswordHasher<InventoryMS.Models.User>, PasswordHasher<InventoryMS.Models.User>>();
 
 // Auth Configurations
+var jwtSection = builder.Configuration.GetSection("Jwt");
+var key = jwtSection["Key"] ?? "InventoryMS_SUPER_SECRET_KEY_CHANGE_ME_1234567890";
+var issuer = jwtSection["Issuer"] ?? "InventoryMS";
+var audience = jwtSection["Audience"] ?? "InventoryMS";
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        var key = Environment.GetEnvironmentVariable("JWT_KEY") ?? "InventoryMS_SUPER_SECRET_KEY_CHANGE_ME_1234567890";
-        var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "InventoryMS";
-        var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "InventoryMS";
-
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -140,4 +132,3 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-

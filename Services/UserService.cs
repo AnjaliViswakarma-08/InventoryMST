@@ -2,7 +2,8 @@ using AutoMapper;
 using InventoryMS.Data;
 using InventoryMS.DTOs.Users;
 using InventoryMS.Helpers;
-using InventoryMS.Interfaces;
+using InventoryMS.Services.Interfaces;
+using InventoryMS.Repositories.Interfaces;
 using InventoryMS.Models;
 using InventoryMS.Exceptions;
 using Microsoft.AspNetCore.Identity;
@@ -50,10 +51,7 @@ public sealed class UserService : IUserService
             throw new ConflictException("Email already exists.");
         }
 
-        if(!string.Equals(actingRole, RoleName.Owner, StringComparison.OrdinalIgnoreCase) && (string.Equals(dto.Role, RoleName.Owner, StringComparison.OrdinalIgnoreCase) || string.Equals(dto.Role, RoleName.Staff, StringComparison.OrdinalIgnoreCase) || string.Equals(dto.Role, RoleName.Admin, StringComparison.OrdinalIgnoreCase)))
-        {
-            throw new UnauthorizedAccessException("Only owners can create Owner, Staff, or Admin users");
-        }
+        ValidateRolePermission(actingRole, dto.Role, "create");
 
         var user = _mapper.Map<User>(dto);
         user.CreatedAt = DateTime.UtcNow;
@@ -75,11 +73,8 @@ public sealed class UserService : IUserService
             throw new ConflictException("Email already exists.");
         }
 
-        if(!string.Equals(actingRole, RoleName.Owner, StringComparison.OrdinalIgnoreCase) && (string.Equals(dto.Role, RoleName.Owner, StringComparison.OrdinalIgnoreCase) || string.Equals(dto.Role, RoleName.Staff, StringComparison.OrdinalIgnoreCase) || string.Equals(dto.Role, RoleName.Admin, StringComparison.OrdinalIgnoreCase)))
-        {
-            throw new UnauthorizedAccessException("Only owners can update Owner, Staff, or Admin users");
-        }
-
+        ValidateRolePermission(actingRole, user.Role, "update");
+        ValidateRolePermission(actingRole, dto.Role, "update");
 
         _mapper.Map(dto, user);
         _userRepository.Update(user);
@@ -93,12 +88,34 @@ public sealed class UserService : IUserService
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken)
             ?? throw new NotFoundException($"User {userId} was not found.");
 
-        if(!string.Equals(actingRole, RoleName.Owner, StringComparison.OrdinalIgnoreCase) && (string.Equals(user.Role, RoleName.Owner, StringComparison.OrdinalIgnoreCase) || string.Equals(user.Role, RoleName.Staff, StringComparison.OrdinalIgnoreCase) || string.Equals(user.Role, RoleName.Admin, StringComparison.OrdinalIgnoreCase)))
-        {
-            throw new UnauthorizedAccessException("Only owners can delete Owner, Staff, or Admin users");
-        }
+        ValidateRolePermission(actingRole, user.Role, "delete");
 
         _userRepository.Remove(user);
         await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Validates that the acting user has permission to manage a user with the target role.
+    /// Owner: can manage any role.
+    /// HR: can manage any role except Owner.
+    /// All others: cannot manage users.
+    /// </summary>
+    private static void ValidateRolePermission(string actingRole, string targetRole, string action)
+    {
+        if (string.Equals(actingRole, RoleName.Owner, StringComparison.OrdinalIgnoreCase))
+        {
+            return; // Owner can do everything
+        }
+
+        if (string.Equals(actingRole, RoleName.HR, StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.Equals(targetRole, RoleName.Owner, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException($"HR cannot {action} Owner users.");
+            }
+            return; // HR can manage all non-Owner roles
+        }
+
+        throw new UnauthorizedAccessException($"Only Owner and HR can {action} users.");
     }
 }

@@ -1,6 +1,6 @@
 using InventoryMS.Helpers;
 using InventoryMS.DTOs.Users;
-using InventoryMS.Interfaces;
+using InventoryMS.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -37,7 +37,7 @@ public class UserController : ControllerBase
     }
 
     /// <summary>Create User</summary>
-    [Authorize(Roles = "Owner")]
+    [Authorize(Roles = "Owner,HR")]
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<UserResponseDto>), StatusCodes.Status201Created)]
     public async Task<ActionResult<ApiResponse<UserResponseDto>>> Create([FromBody] UserCreateDto dto, CancellationToken cancellationToken)
@@ -48,7 +48,7 @@ public class UserController : ControllerBase
     }
 
     /// <summary>Updates a user.</summary>
-    [Authorize(Roles = "Owner")]
+    [Authorize(Roles = "Owner,HR")]
     [HttpPut("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<UserResponseDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<UserResponseDto>>> Update(int id, [FromBody] UserUpdateDto dto, CancellationToken cancellationToken)
@@ -59,7 +59,7 @@ public class UserController : ControllerBase
     }
 
     /// <summary>Deletes a user.</summary>
-    [Authorize(Roles = "Owner")]
+    [Authorize(Roles = "Owner,HR")]
     [HttpDelete("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<string>>> Delete(int id, CancellationToken cancellationToken)

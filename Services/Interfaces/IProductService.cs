@@ -1,6 +1,6 @@
 using InventoryMS.DTOs.Products;
 
-namespace InventoryMS.Interfaces;
+namespace InventoryMS.Services.Interfaces;
 
 public interface IProductService
 {

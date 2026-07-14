@@ -1,6 +1,6 @@
 using InventoryMS.Models;
 
-namespace InventoryMS.Interfaces;
+namespace InventoryMS.Services.Interfaces;
 
 public interface ITokenService
 {
