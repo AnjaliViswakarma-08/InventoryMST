@@ -25,7 +25,7 @@ builder.Services.AddControllers(options =>
 builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestDtoValidator>();
 
 // Add AutoMapper
-builder.Services.AddAutoMapper(typeof(EntityToDtoProfile), typeof(DtoToEntityProfile));
+builder.Services.AddAutoMapper(cfg => {}, typeof(EntityToDtoProfile));
 
 // JWT Configurations
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
@@ -96,18 +96,11 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Enter the JWT token in the format: Bearer {token}"
     });
 
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            new string[] {}
+            new OpenApiSecuritySchemeReference("Bearer", document),
+            new List<string>()
         }
     });
 });
