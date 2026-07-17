@@ -7,6 +7,7 @@ using InventoryMS.Repositories.Interfaces;
 using InventoryMS.Models;
 using InventoryMS.Exceptions;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace InventoryMS.Services;
@@ -56,6 +57,13 @@ public sealed class UserService : IUserService
         var user = _mapper.Map<User>(dto);
         user.CreatedAt = DateTime.UtcNow;
         user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
+        // Resolve role name -> role id
+        var role = await _dbContext.Roles.SingleOrDefaultAsync(r => r.Name == dto.Role, cancellationToken);
+        if (role is null)
+        {
+            throw new ArgumentException($"Role '{dto.Role}' does not exist.");
+        }
+        user.RoleId = role.RoleId;
 
         await _userRepository.AddAsync(user, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -73,10 +81,23 @@ public sealed class UserService : IUserService
             throw new ConflictException("Email already exists.");
         }
 
-        ValidateRolePermission(actingRole, user.Role, "update");
+        // Ensure role navigation is available for permission checks
+        var userRoleName = user.Role?.Name ?? (await _dbContext.Roles.FindAsync(new object?[] { user.RoleId }, cancellationToken))?.Name ?? string.Empty;
+        ValidateRolePermission(actingRole, userRoleName, "update");
         ValidateRolePermission(actingRole, dto.Role, "update");
 
         _mapper.Map(dto, user);
+
+        // Update role id if role name changed
+        if (!string.Equals(dto.Role, userRoleName, StringComparison.OrdinalIgnoreCase))
+        {
+            var newRole = await _dbContext.Roles.SingleOrDefaultAsync(r => r.Name == dto.Role, cancellationToken);
+            if (newRole is null)
+            {
+                throw new ArgumentException($"Role '{dto.Role}' does not exist.");
+            }
+            user.RoleId = newRole.RoleId;
+        }
         _userRepository.Update(user);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -88,7 +109,8 @@ public sealed class UserService : IUserService
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken)
             ?? throw new NotFoundException($"User {userId} was not found.");
 
-        ValidateRolePermission(actingRole, user.Role, "delete");
+        var userRoleName = user.Role?.Name ?? (await _dbContext.Roles.FindAsync(new object?[] { user.RoleId }, cancellationToken))?.Name ?? string.Empty;
+        ValidateRolePermission(actingRole, userRoleName, "delete");
 
         _userRepository.Remove(user);
         await _dbContext.SaveChangesAsync(cancellationToken);

@@ -28,7 +28,7 @@ public sealed class TokenService : ITokenService
             new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
             new(ClaimTypes.Name, $"{user.Firstname} {user.Lastname}"),
             new(JwtRegisteredClaimNames.UniqueName, user.Email),
-            new(ClaimTypes.Role, user.Role)
+            new(ClaimTypes.Role, user.Role?.Name ?? string.Empty)
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));

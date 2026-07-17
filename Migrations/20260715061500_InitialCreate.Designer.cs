@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InventoryMS.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260707094211_InitialCreate")]
+    [Migration("20260715061500_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -144,6 +144,27 @@ namespace InventoryMS.Migrations
                     b.ToView(null, (string)null);
                 });
 
+            modelBuilder.Entity("InventoryMS.Models.Role", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RoleId"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("RoleId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Roles");
+                });
+
             modelBuilder.Entity("InventoryMS.Models.Supplier", b =>
                 {
                     b.Property<int>("SupplierId")
@@ -224,15 +245,18 @@ namespace InventoryMS.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("Phone")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
 
                     b.HasKey("UserId");
 
@@ -241,6 +265,8 @@ namespace InventoryMS.Migrations
 
                     b.HasIndex("Phone")
                         .IsUnique();
+
+                    b.HasIndex("RoleId");
 
                     b.ToTable("Users");
                 });
@@ -286,6 +312,17 @@ namespace InventoryMS.Migrations
                     b.Navigation("Supplier");
                 });
 
+            modelBuilder.Entity("InventoryMS.Models.User", b =>
+                {
+                    b.HasOne("InventoryMS.Models.Role", "Role")
+                        .WithMany("Users")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+                });
+
             modelBuilder.Entity("InventoryMS.Models.Order", b =>
                 {
                     b.Navigation("OrderItems");
@@ -294,6 +331,11 @@ namespace InventoryMS.Migrations
             modelBuilder.Entity("InventoryMS.Models.Product", b =>
                 {
                     b.Navigation("OrderItems");
+                });
+
+            modelBuilder.Entity("InventoryMS.Models.Role", b =>
+                {
+                    b.Navigation("Users");
                 });
 
             modelBuilder.Entity("InventoryMS.Models.Supplier", b =>

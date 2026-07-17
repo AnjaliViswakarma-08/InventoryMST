@@ -15,7 +15,8 @@ public sealed class EntityToDtoProfile : Profile
         CreateMap<User, UserResponseDto>()
             .ForMember(dest => dest.FirstName, opt => opt.MapFrom(src => src.Firstname))
             .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.Lastname))
-            .ForMember(dest => dest.CreatedDate, opt => opt.MapFrom(src => src.CreatedAt));
+            .ForMember(dest => dest.CreatedDate, opt => opt.MapFrom(src => src.CreatedAt))
+            .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role != null ? src.Role.Name : string.Empty));
 
         // Supplier → SupplierResponseDto
         CreateMap<Supplier, SupplierResponseDto>();

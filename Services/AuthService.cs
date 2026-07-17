@@ -28,6 +28,7 @@ public sealed class AuthService : IAuthService
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto dto, CancellationToken cancellationToken)
     {
         var user = await _dbContext.Users
+            .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower(), cancellationToken);
 
         if (user is null)
@@ -49,7 +50,7 @@ public sealed class AuthService : IAuthService
             ExpiresAtUtc = expiresAtUtc,
             UserId = user.UserId,
             FullName = $"{user.Firstname} {user.Lastname}",
-            Role = user.Role
+            Role = user.Role?.Name ?? string.Empty
         };
     }
 }

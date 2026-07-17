@@ -15,13 +15,13 @@ public sealed class UserRepository : IUserRepository
     }
 
     public Task<List<User>> GetAllAsync(CancellationToken cancellationToken) =>
-        _dbContext.Users.AsNoTracking().OrderBy(u => u.UserId).ToListAsync(cancellationToken);
+        _dbContext.Users.AsNoTracking().Include(u => u.Role).OrderBy(u => u.UserId).ToListAsync(cancellationToken);
 
     public Task<User?> GetByIdAsync(int userId, CancellationToken cancellationToken) =>
-        _dbContext.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
+        _dbContext.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
 
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken) =>
-        _dbContext.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower(), cancellationToken);
+        _dbContext.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower(), cancellationToken);
 
     public Task<bool> EmailExistsAsync(string email, int? excludeUserId, CancellationToken cancellationToken) =>
         _dbContext.Users.AnyAsync(u =>

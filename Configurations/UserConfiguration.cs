@@ -15,7 +15,11 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(user => user.Address).HasMaxLength(250).IsRequired();
         builder.Property(user => user.Phone).HasMaxLength(20).IsRequired();
         builder.Property(user => user.Email).HasMaxLength(200).IsRequired();
-        builder.Property(user => user.Role).HasMaxLength(50).IsRequired();
+        builder.Property(user => user.RoleId).IsRequired();
+        builder.HasOne(user => user.Role)
+            .WithMany(r => r.Users)
+            .HasForeignKey(user => user.RoleId)
+            .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
         builder.Property(user => user.PasswordHash).HasMaxLength(500).IsRequired();
         builder.Property(user => user.CreatedAt).IsRequired();
         builder.HasIndex(user => user.Email).IsUnique(); //unique index for email(every user should have unique email)

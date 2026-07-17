@@ -34,6 +34,28 @@ END;");
 
         if (!await dbContext.Users.AnyAsync())
         {
+            // Ensure roles exist
+            if (!await dbContext.Roles.AnyAsync())
+            {
+                var roles = new[]
+                {
+                    new Role { Name = RoleName.Owner },
+                    new Role { Name = RoleName.HR },
+                    new Role { Name = RoleName.AdminStaff },
+                    new Role { Name = RoleName.ViewerStaff },
+                    new Role { Name = RoleName.EditorStaff }
+                };
+
+                await dbContext.Roles.AddRangeAsync(roles);
+                await dbContext.SaveChangesAsync();
+            }
+
+            var ownerRole = await dbContext.Roles.SingleAsync(r => r.Name == RoleName.Owner);
+            var hrRole = await dbContext.Roles.SingleAsync(r => r.Name == RoleName.HR);
+            var adminStaffRole = await dbContext.Roles.SingleAsync(r => r.Name == RoleName.AdminStaff);
+            var viewerStaffRole = await dbContext.Roles.SingleAsync(r => r.Name == RoleName.ViewerStaff);
+            var editorStaffRole = await dbContext.Roles.SingleAsync(r => r.Name == RoleName.EditorStaff);
+
             var owner = new User
             {
                 Firstname = "Aman",
@@ -43,7 +65,7 @@ END;");
                 Address = "Nayapalli",
                 Phone = "+10000000001",
                 Email = "owner@ims.local",
-                Role = RoleName.Owner,
+                RoleId = ownerRole.RoleId,
                 CreatedAt = DateTime.UtcNow
             };
             owner.PasswordHash = passwordHasher.HashPassword(owner, "Admin@123");
@@ -57,7 +79,7 @@ END;");
                 Address = "Patia",
                 Phone = "+10000000002",
                 Email = "hr@ims.local",
-                Role = RoleName.HR,
+                RoleId = hrRole.RoleId,
                 CreatedAt = DateTime.UtcNow
             };
             hrUser.PasswordHash = passwordHasher.HashPassword(hrUser, "HR@12345");
@@ -71,7 +93,7 @@ END;");
                 Address = "Bhubaneswar",
                 Phone = "+10000000003",
                 Email = "adminstaff@ims.local",
-                Role = RoleName.AdminStaff,
+                RoleId = adminStaffRole.RoleId,
                 CreatedAt = DateTime.UtcNow
             };
             adminStaff.PasswordHash = passwordHasher.HashPassword(adminStaff, "AdminStaff@123");
@@ -85,7 +107,7 @@ END;");
                 Address = "Cuttack",
                 Phone = "+10000000004",
                 Email = "viewerstaff@ims.local",
-                Role = RoleName.ViewerStaff,
+                RoleId = viewerStaffRole.RoleId,
                 CreatedAt = DateTime.UtcNow
             };
             viewerStaff.PasswordHash = passwordHasher.HashPassword(viewerStaff, "ViewerStaff@123");
@@ -99,7 +121,7 @@ END;");
                 Address = "Puri",
                 Phone = "+10000000005",
                 Email = "editorstaff@ims.local",
-                Role = RoleName.EditorStaff,
+                RoleId = editorStaffRole.RoleId,
                 CreatedAt = DateTime.UtcNow
             };
             editorStaff.PasswordHash = passwordHasher.HashPassword(editorStaff, "EditorStaff@123");
