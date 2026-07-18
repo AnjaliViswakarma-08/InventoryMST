@@ -3,7 +3,7 @@ using InventoryMS.Data;
 using InventoryMS.DTOs.Suppliers;
 using InventoryMS.Helpers;
 using InventoryMS.Services.Interfaces;
-using InventoryMS.Repositories.Interfaces;
+using InventoryMS.Data.Repositories.Interfaces;
 using InventoryMS.Exceptions;
 
 namespace InventoryMS.Services;
@@ -42,7 +42,7 @@ public sealed class SupplierService : ISupplierService
             throw new ConflictException("Supplier email already exists.");
         }
 
-        var supplier = _mapper.Map<InventoryMS.Models.Supplier>(dto);
+        var supplier = _mapper.Map<InventoryMS.Data.Models.Supplier>(dto);
         await _supplierRepository.AddAsync(supplier, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
 

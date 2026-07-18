@@ -1,6 +1,6 @@
 using InventoryMS.DTOs.Reports;
 using InventoryMS.Services.Interfaces;
-using InventoryMS.Repositories.Interfaces;
+using InventoryMS.Data.Repositories.Interfaces;
 
 namespace InventoryMS.Services;
 

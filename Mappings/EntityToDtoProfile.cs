@@ -3,7 +3,7 @@ using InventoryMS.DTOs.Orders;
 using InventoryMS.DTOs.Products;
 using InventoryMS.DTOs.Suppliers;
 using InventoryMS.DTOs.Users;
-using InventoryMS.Models;
+using InventoryMS.Data.Models;
 
 namespace InventoryMS.Mappings;
 

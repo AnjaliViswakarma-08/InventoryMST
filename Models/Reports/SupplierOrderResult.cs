@@ -1,8 +1,1 @@
-namespace InventoryMS.Models.Reports;
-
-public sealed class SupplierOrderResult
-{
-    public string SupplierName { get; set;} = string.Empty;
-    public int TotalQuantityOrdered { get; set;}
-    public decimal TotalOrderValue { get; set;}
-}
+// This file has been moved to Data/Models/Reports/SupplierOrderResult.cs

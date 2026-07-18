@@ -1,8 +1,1 @@
-using InventoryMS.DTOs.Reports;
-
-namespace InventoryMS.Repositories.Interfaces;
-
-public interface IReportingRepository
-{
-    Task<List<SupplierOrderReportDto>> GetSupplierOrderReportAsync(CancellationToken cancellationToken);
-}
+// This file has been moved to Data/Repositories/Interfaces/IReportingRepository.cs

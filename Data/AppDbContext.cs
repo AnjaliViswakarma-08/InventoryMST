@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using InventoryMS.Models;
-using InventoryMS.Models.Reports;
+using InventoryMS.Data.Models;
+using InventoryMS.Data.Models.Reports;
 
 namespace InventoryMS.Data;
 
@@ -15,6 +15,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<OtpEntry> OtpEntries => Set<OtpEntry>();
     public DbSet<SupplierOrderResult> SupplierOrderResults => Set<SupplierOrderResult>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -22,4 +23,3 @@ public sealed class AppDbContext : DbContext
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 }
-    

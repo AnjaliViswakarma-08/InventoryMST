@@ -1,6 +1,6 @@
 using InventoryMS.Helpers;
 using InventoryMS.Services.Interfaces;
-using InventoryMS.Models;
+using InventoryMS.Data.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;

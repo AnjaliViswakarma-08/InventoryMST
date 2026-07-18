@@ -3,8 +3,8 @@ using InventoryMS.Data;
 using InventoryMS.Helpers;
 using InventoryMS.Mappings;
 using InventoryMS.Middleware;
-using InventoryMS.Repositories;
-using InventoryMS.Repositories.Interfaces;
+using InventoryMS.Data.Repositories;
+using InventoryMS.Data.Repositories.Interfaces;
 using InventoryMS.Services;
 using InventoryMS.Services.Interfaces;
 using InventoryMS.Validators;
@@ -30,6 +30,9 @@ builder.Services.AddAutoMapper(cfg => {}, typeof(EntityToDtoProfile));
 // JWT Configurations
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 
+// SMTP Configurations
+builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
+
 // Configure AppDbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -40,6 +43,7 @@ builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IReportingRepository, ReportingRepository>();
+builder.Services.AddScoped<IOtpRepository, OtpRepository>();
 
 // DI Services
 builder.Services.AddScoped<IUserService, UserService>();
@@ -49,7 +53,8 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IReportingService, ReportingService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
-builder.Services.AddScoped<IPasswordHasher<InventoryMS.Models.User>, PasswordHasher<InventoryMS.Models.User>>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IPasswordHasher<InventoryMS.Data.Models.User>, PasswordHasher<InventoryMS.Data.Models.User>>();
 
 // Auth Configurations
 var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -83,7 +88,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "Inventory Management System API",
         Version = "v1",
-        Description = "Single-Tenant Inventory Management System API with CRUD and Auth."
+        Description = "Single-Tenant Inventory Management System API with OTP-based Auth, RBAC, and CRUD."
     });
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -103,6 +108,14 @@ builder.Services.AddSwaggerGen(options =>
             new List<string>()
         }
     });
+
+    // Configure Swagger to use XML comments
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
 });
 
 var app = builder.Build();
@@ -113,11 +126,9 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 Console.WriteLine("Initializing the database...");
 await DbInitializer.InitializeAsync(app.Services);
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Expose Swagger UI in all environments
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseAuthentication();

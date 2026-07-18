@@ -19,6 +19,7 @@ public class UserController : ControllerBase
     }
 
     /// <summary>Get All Users</summary>
+    [Authorize]
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<List<UserResponseDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<List<UserResponseDto>>>> GetAll(CancellationToken cancellationToken)
@@ -28,6 +29,7 @@ public class UserController : ControllerBase
     }
 
     /// <summary>Get User By Id</summary>
+    [Authorize]
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<UserResponseDto>), StatusCodes.Status200OK)] 
     public async Task<ActionResult<ApiResponse<UserResponseDto>>> GetById(int id, CancellationToken cancellationToken)
@@ -36,7 +38,7 @@ public class UserController : ControllerBase
         return Ok(ApiResponse<UserResponseDto>.Ok(user));
     }
 
-    /// <summary>Create User</summary>
+    /// <summary>Create User (Owner/HR only)</summary>
     [Authorize(Roles = "Owner,HR")]
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<UserResponseDto>), StatusCodes.Status201Created)]
@@ -47,25 +49,27 @@ public class UserController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = user.UserId }, ApiResponse<UserResponseDto>.Ok(user, "User created successfully"));
     }
 
-    /// <summary>Updates a user.</summary>
-    [Authorize(Roles = "Owner,HR")]
+    /// <summary>Updates a user. Any authenticated user can update their own profile; Owner/HR can update others.</summary>
+    [Authorize]
     [HttpPut("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<UserResponseDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<UserResponseDto>>> Update(int id, [FromBody] UserUpdateDto dto, CancellationToken cancellationToken)
     {
+        var actingUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
         var actingRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
-        var user = await _userService.UpdateAsync(id, actingRole, dto, cancellationToken);
+        var user = await _userService.UpdateAsync(id, actingUserId, actingRole, dto, cancellationToken);
         return Ok(ApiResponse<UserResponseDto>.Ok(user, "User updated successfully"));
     }
 
-    /// <summary>Deletes a user.</summary>
+    /// <summary>Deletes a user (Owner/HR only).</summary>
     [Authorize(Roles = "Owner,HR")]
     [HttpDelete("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<string>>> Delete(int id, CancellationToken cancellationToken)
     {
+        var actingUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
         var actingRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
-        await _userService.DeleteAsync(id, actingRole, cancellationToken);
+        await _userService.DeleteAsync(id, actingUserId, actingRole, cancellationToken);
         return Ok(ApiResponse<string>.Ok(null, "User deleted successfully"));
     }
 }

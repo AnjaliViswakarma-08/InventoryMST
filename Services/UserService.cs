@@ -3,8 +3,8 @@ using InventoryMS.Data;
 using InventoryMS.DTOs.Users;
 using InventoryMS.Helpers;
 using InventoryMS.Services.Interfaces;
-using InventoryMS.Repositories.Interfaces;
-using InventoryMS.Models;
+using InventoryMS.Data.Repositories.Interfaces;
+using InventoryMS.Data.Models;
 using InventoryMS.Exceptions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -71,45 +71,80 @@ public sealed class UserService : IUserService
         return _mapper.Map<UserResponseDto>(user);
     }
 
-    public async Task<UserResponseDto> UpdateAsync(int userId, string actingRole, UserUpdateDto dto, CancellationToken cancellationToken)
+    public async Task<UserResponseDto> UpdateAsync(int userId, int actingUserId, string actingRole, UserUpdateDto dto, CancellationToken cancellationToken)
     {
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken)
             ?? throw new NotFoundException($"User {userId} was not found.");
 
-        if (await _userRepository.EmailExistsAsync(dto.Email, userId, cancellationToken))
+        // Resolve the user's current role name
+        var userRoleName = user.Role?.Name
+            ?? (await _dbContext.Roles.FindAsync(new object?[] { user.RoleId }, cancellationToken))?.Name
+            ?? string.Empty;
+
+        if (userId == actingUserId)
         {
-            throw new ConflictException("Email already exists.");
-        }
-
-        // Ensure role navigation is available for permission checks
-        var userRoleName = user.Role?.Name ?? (await _dbContext.Roles.FindAsync(new object?[] { user.RoleId }, cancellationToken))?.Name ?? string.Empty;
-        ValidateRolePermission(actingRole, userRoleName, "update");
-        ValidateRolePermission(actingRole, dto.Role, "update");
-
-        _mapper.Map(dto, user);
-
-        // Update role id if role name changed
-        if (!string.Equals(dto.Role, userRoleName, StringComparison.OrdinalIgnoreCase))
-        {
-            var newRole = await _dbContext.Roles.SingleOrDefaultAsync(r => r.Name == dto.Role, cancellationToken);
-            if (newRole is null)
+            // Self-edit: user can modify own profile but NOT their own role
+            if (await _userRepository.EmailExistsAsync(dto.Email, userId, cancellationToken))
             {
-                throw new ArgumentException($"Role '{dto.Role}' does not exist.");
+                throw new ConflictException("Email already exists.");
             }
-            user.RoleId = newRole.RoleId;
+
+            if (!string.IsNullOrWhiteSpace(dto.Role)
+                && !string.Equals(dto.Role, userRoleName, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException("You cannot change your own role.");
+            }
+            
+            // Map all updated details
+            _mapper.Map(dto, user);
+            // Force role to remain the same
+            var currentRole = await _dbContext.Roles.SingleAsync(r => r.RoleId == user.RoleId, cancellationToken);
+            user.Role = currentRole;
         }
+        else
+        {
+            // Admin-edit: Owner/HR editing another user. ONLY allowed to modify the role.
+            ValidateRolePermission(actingRole, userRoleName, "update");
+            ValidateRolePermission(actingRole, dto.Role, "update");
+
+            // Do NOT map other fields from DTO. Only update the role if it changed.
+            if (!string.Equals(dto.Role, userRoleName, StringComparison.OrdinalIgnoreCase))
+            {
+                var newRole = await _dbContext.Roles.SingleOrDefaultAsync(r => r.Name == dto.Role, cancellationToken);
+                if (newRole is null)
+                {
+                    throw new ArgumentException($"Role '{dto.Role}' does not exist.");
+                }
+                user.RoleId = newRole.RoleId;
+                user.Role = newRole;
+            }
+        }
+
         _userRepository.Update(user);
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // Ensure user.Role navigation property is explicitly loaded/populated for DTO mapping
+        if (user.Role == null)
+        {
+            await _dbContext.Entry(user).Reference(u => u.Role).LoadAsync(cancellationToken);
+        }
 
         return _mapper.Map<UserResponseDto>(user);
     }
 
-    public async Task DeleteAsync(int userId, string actingRole, CancellationToken cancellationToken)
+    public async Task DeleteAsync(int userId, int actingUserId, string actingRole, CancellationToken cancellationToken)
     {
+        if (userId == actingUserId)
+        {
+            throw new UnauthorizedAccessException("You cannot delete your own account.");
+        }
+
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken)
             ?? throw new NotFoundException($"User {userId} was not found.");
 
-        var userRoleName = user.Role?.Name ?? (await _dbContext.Roles.FindAsync(new object?[] { user.RoleId }, cancellationToken))?.Name ?? string.Empty;
+        var userRoleName = user.Role?.Name
+            ?? (await _dbContext.Roles.FindAsync(new object?[] { user.RoleId }, cancellationToken))?.Name
+            ?? string.Empty;
         ValidateRolePermission(actingRole, userRoleName, "delete");
 
         _userRepository.Remove(user);

@@ -1,5 +1,5 @@
 using InventoryMS.Helpers;
-using InventoryMS.Models;
+using InventoryMS.Data.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,44 +32,47 @@ BEGIN
     ORDER BY s.SupplierName;
 END;");
 
+        // Ensure roles exist
+        if (!await dbContext.Roles.AnyAsync())
+        {
+            var roles = new[]
+            {
+                new Role { Name = RoleName.Owner },
+                new Role { Name = RoleName.HR },
+                new Role { Name = RoleName.AdminStaff },
+                new Role { Name = RoleName.ViewerStaff },
+                new Role { Name = RoleName.EditorStaff }
+            };
+
+            await dbContext.Roles.AddRangeAsync(roles);
+            await dbContext.SaveChangesAsync();
+        }
+
+        // Seed one user per role
         if (!await dbContext.Users.AnyAsync())
         {
-            // Ensure roles exist
-            if (!await dbContext.Roles.AnyAsync())
-            {
-                var roles = new[]
-                {
-                    new Role { Name = RoleName.Owner },
-                    new Role { Name = RoleName.HR },
-                    new Role { Name = RoleName.AdminStaff },
-                    new Role { Name = RoleName.ViewerStaff },
-                    new Role { Name = RoleName.EditorStaff }
-                };
-
-                await dbContext.Roles.AddRangeAsync(roles);
-                await dbContext.SaveChangesAsync();
-            }
-
             var ownerRole = await dbContext.Roles.SingleAsync(r => r.Name == RoleName.Owner);
             var hrRole = await dbContext.Roles.SingleAsync(r => r.Name == RoleName.HR);
             var adminStaffRole = await dbContext.Roles.SingleAsync(r => r.Name == RoleName.AdminStaff);
             var viewerStaffRole = await dbContext.Roles.SingleAsync(r => r.Name == RoleName.ViewerStaff);
             var editorStaffRole = await dbContext.Roles.SingleAsync(r => r.Name == RoleName.EditorStaff);
 
+            // Owner — godamm.warehouse@gmail.com / GoDamm@1097
             var owner = new User
             {
-                Firstname = "Aman",
-                Lastname = "Gupta",
+                Firstname = "GoDamm",
+                Lastname = "Warehouse",
                 Age = 30,
                 Gender = "Male",
-                Address = "Nayapalli",
+                Address = "Headquarters",
                 Phone = "+10000000001",
-                Email = "owner@ims.local",
+                Email = "godamm.warehouse@gmail.com",
                 RoleId = ownerRole.RoleId,
                 CreatedAt = DateTime.UtcNow
             };
-            owner.PasswordHash = passwordHasher.HashPassword(owner, "Admin@123");
+            owner.PasswordHash = passwordHasher.HashPassword(owner, "GoDamm@1097");
 
+            // HR — hr@ims.local / HR@12345
             var hrUser = new User
             {
                 Firstname = "Surabhi",
@@ -84,6 +87,7 @@ END;");
             };
             hrUser.PasswordHash = passwordHasher.HashPassword(hrUser, "HR@12345");
 
+            // AdminStaff — adminstaff@ims.local / AdminStaff@123
             var adminStaff = new User
             {
                 Firstname = "Raj",
@@ -98,6 +102,7 @@ END;");
             };
             adminStaff.PasswordHash = passwordHasher.HashPassword(adminStaff, "AdminStaff@123");
 
+            // ViewerStaff — viewerstaff@ims.local / ViewerStaff@123
             var viewerStaff = new User
             {
                 Firstname = "Priya",
@@ -112,6 +117,7 @@ END;");
             };
             viewerStaff.PasswordHash = passwordHasher.HashPassword(viewerStaff, "ViewerStaff@123");
 
+            // EditorStaff — editorstaff@ims.local / EditorStaff@123
             var editorStaff = new User
             {
                 Firstname = "Ankit",

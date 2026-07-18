@@ -10,7 +10,7 @@ public interface IUserService
 
     Task<UserResponseDto> CreateAsync(string actingRole, UserCreateDto dto, CancellationToken cancellationToken);
 
-    Task<UserResponseDto> UpdateAsync(int userId, string actingRole, UserUpdateDto dto, CancellationToken cancellationToken);
+    Task<UserResponseDto> UpdateAsync(int userId, int actingUserId, string actingRole, UserUpdateDto dto, CancellationToken cancellationToken);
 
-    Task DeleteAsync(int userId, string actingRole, CancellationToken cancellationToken);
+    Task DeleteAsync(int userId, int actingUserId, string actingRole, CancellationToken cancellationToken);
 }

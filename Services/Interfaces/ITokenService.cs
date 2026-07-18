@@ -1,4 +1,4 @@
-using InventoryMS.Models;
+using InventoryMS.Data.Models;
 
 namespace InventoryMS.Services.Interfaces;
 

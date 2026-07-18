@@ -3,8 +3,8 @@ using InventoryMS.Data;
 using InventoryMS.DTOs.Products;
 using InventoryMS.Helpers;
 using InventoryMS.Services.Interfaces;
-using InventoryMS.Repositories.Interfaces;
-using InventoryMS.Models;
+using InventoryMS.Data.Repositories.Interfaces;
+using InventoryMS.Data.Models;
 using InventoryMS.Exceptions;
 using Microsoft.EntityFrameworkCore;
 

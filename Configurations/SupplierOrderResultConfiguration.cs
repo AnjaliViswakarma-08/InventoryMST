@@ -1,4 +1,4 @@
-using InventoryMS.Models.Reports;
+using InventoryMS.Data.Models.Reports;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
