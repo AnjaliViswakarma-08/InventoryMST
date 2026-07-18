@@ -16,29 +16,51 @@ public sealed class UserService : IUserService
 {
     private readonly IUserRepository _userRepository;
     private readonly IMapper _mapper;
-    private readonly AppDbContext _dbContext;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IRoleRepository _roleRepository;
     private readonly IPasswordHasher<User> _passwordHasher;
 
     public UserService(
         IUserRepository userRepository,
         IMapper mapper,
-        AppDbContext dbContext,
+        IUnitOfWork unitOfWork,
+        IRoleRepository roleRepository,
         IPasswordHasher<User> passwordHasher)
     {
         _userRepository = userRepository;
         _mapper = mapper;
-        _dbContext = dbContext;
+        _unitOfWork = unitOfWork;
+        _roleRepository = roleRepository;
         _passwordHasher = passwordHasher;
     }
 
-    public async Task<List<UserResponseDto>> GetAllAsync(CancellationToken cancellationToken)
+    public async Task<List<UserResponseDto>> GetAllAsync(int actingUserId, string actingRole, CancellationToken cancellationToken)
     {
-        var users = await _userRepository.GetAllAsync(cancellationToken);
-        return _mapper.Map<List<UserResponseDto>>(users);
+        if (string.Equals(actingRole, RoleName.Owner, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(actingRole, RoleName.HR, StringComparison.OrdinalIgnoreCase))
+        {
+            var users = await _userRepository.GetAllAsync(cancellationToken);
+            return _mapper.Map<List<UserResponseDto>>(users);
+        }
+
+        var user = await _userRepository.GetByIdAsync(actingUserId, cancellationToken);
+        if (user == null)
+        {
+            return new List<UserResponseDto>();
+        }
+
+        return new List<UserResponseDto> { _mapper.Map<UserResponseDto>(user) };
     }
 
-    public async Task<UserResponseDto> GetByIdAsync(int userId, CancellationToken cancellationToken)
+    public async Task<UserResponseDto> GetByIdAsync(int userId, int actingUserId, string actingRole, CancellationToken cancellationToken)
     {
+        if (!string.Equals(actingRole, RoleName.Owner, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(actingRole, RoleName.HR, StringComparison.OrdinalIgnoreCase) &&
+            userId != actingUserId)
+        {
+            throw new UnauthorizedAccessException("You are not authorized to view this user's data.");
+        }
+
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken)
             ?? throw new NotFoundException($"User {userId} was not found.");
 
@@ -58,7 +80,7 @@ public sealed class UserService : IUserService
         user.CreatedAt = DateTime.UtcNow;
         user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
         // Resolve role name -> role id
-        var role = await _dbContext.Roles.SingleOrDefaultAsync(r => r.Name == dto.Role, cancellationToken);
+        var role = await _roleRepository.GetByNameAsync(dto.Role, cancellationToken);
         if (role is null)
         {
             throw new ArgumentException($"Role '{dto.Role}' does not exist.");
@@ -66,7 +88,7 @@ public sealed class UserService : IUserService
         user.RoleId = role.RoleId;
 
         await _userRepository.AddAsync(user, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return _mapper.Map<UserResponseDto>(user);
     }
@@ -76,19 +98,20 @@ public sealed class UserService : IUserService
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken)
             ?? throw new NotFoundException($"User {userId} was not found.");
 
+        // Email update is totally denied for any user
+        if (!string.Equals(dto.Email, user.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new UnauthorizedAccessException("Email update is not allowed.");
+        }
+
         // Resolve the user's current role name
         var userRoleName = user.Role?.Name
-            ?? (await _dbContext.Roles.FindAsync(new object?[] { user.RoleId }, cancellationToken))?.Name
+            ?? (await _roleRepository.GetByIdAsync(user.RoleId, cancellationToken))?.Name
             ?? string.Empty;
 
         if (userId == actingUserId)
         {
             // Self-edit: user can modify own profile but NOT their own role
-            if (await _userRepository.EmailExistsAsync(dto.Email, userId, cancellationToken))
-            {
-                throw new ConflictException("Email already exists.");
-            }
-
             if (!string.IsNullOrWhiteSpace(dto.Role)
                 && !string.Equals(dto.Role, userRoleName, StringComparison.OrdinalIgnoreCase))
             {
@@ -98,35 +121,59 @@ public sealed class UserService : IUserService
             // Map all updated details
             _mapper.Map(dto, user);
             // Force role to remain the same
-            var currentRole = await _dbContext.Roles.SingleAsync(r => r.RoleId == user.RoleId, cancellationToken);
-            user.Role = currentRole;
+            var currentRole = await _roleRepository.GetByIdAsync(user.RoleId, cancellationToken);
+            if (currentRole != null)
+            {
+                user.Role = currentRole;
+            }
         }
         else
         {
             // Admin-edit: Owner/HR editing another user. ONLY allowed to modify the role.
-            ValidateRolePermission(actingRole, userRoleName, "update");
-            ValidateRolePermission(actingRole, dto.Role, "update");
+            if (!string.Equals(actingRole, RoleName.Owner, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(actingRole, RoleName.HR, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException("Only Owner and HR can edit other users.");
+            }
 
             // Do NOT map other fields from DTO. Only update the role if it changed.
             if (!string.Equals(dto.Role, userRoleName, StringComparison.OrdinalIgnoreCase))
             {
-                var newRole = await _dbContext.Roles.SingleOrDefaultAsync(r => r.Name == dto.Role, cancellationToken);
+                var newRole = await _roleRepository.GetByNameAsync(dto.Role, cancellationToken);
                 if (newRole is null)
                 {
                     throw new ArgumentException($"Role '{dto.Role}' does not exist.");
                 }
+
+                // HR can only update the role of Staff (AdminStaff, EditorStaff, ViewerStaff)
+                if (string.Equals(actingRole, RoleName.HR, StringComparison.OrdinalIgnoreCase))
+                {
+                    bool isCurrentRoleStaff = string.Equals(userRoleName, RoleName.AdminStaff, StringComparison.OrdinalIgnoreCase) ||
+                                              string.Equals(userRoleName, RoleName.EditorStaff, StringComparison.OrdinalIgnoreCase) ||
+                                              string.Equals(userRoleName, RoleName.ViewerStaff, StringComparison.OrdinalIgnoreCase);
+
+                    bool isNewRoleStaff = string.Equals(dto.Role, RoleName.AdminStaff, StringComparison.OrdinalIgnoreCase) ||
+                                          string.Equals(dto.Role, RoleName.EditorStaff, StringComparison.OrdinalIgnoreCase) ||
+                                          string.Equals(dto.Role, RoleName.ViewerStaff, StringComparison.OrdinalIgnoreCase);
+
+                    if (!isCurrentRoleStaff || !isNewRoleStaff)
+                    {
+                        throw new UnauthorizedAccessException("HR can only update the role of Staff (AdminStaff, EditorStaff, ViewerStaff).");
+                    }
+                }
+
                 user.RoleId = newRole.RoleId;
                 user.Role = newRole;
             }
         }
 
         _userRepository.Update(user);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Ensure user.Role navigation property is explicitly loaded/populated for DTO mapping
         if (user.Role == null)
         {
-            await _dbContext.Entry(user).Reference(u => u.Role).LoadAsync(cancellationToken);
+            await _userRepository.LoadRoleAsync(user, cancellationToken);
         }
 
         return _mapper.Map<UserResponseDto>(user);
@@ -143,12 +190,12 @@ public sealed class UserService : IUserService
             ?? throw new NotFoundException($"User {userId} was not found.");
 
         var userRoleName = user.Role?.Name
-            ?? (await _dbContext.Roles.FindAsync(new object?[] { user.RoleId }, cancellationToken))?.Name
+            ?? (await _roleRepository.GetByIdAsync(user.RoleId, cancellationToken))?.Name
             ?? string.Empty;
         ValidateRolePermission(actingRole, userRoleName, "delete");
 
         _userRepository.Remove(user);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>

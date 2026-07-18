@@ -17,4 +17,6 @@ public interface IUserRepository
     void Update(User user);
 
     void Remove(User user);
+
+    Task LoadRoleAsync(User user, CancellationToken cancellationToken);
 }

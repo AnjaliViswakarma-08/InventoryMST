@@ -35,4 +35,6 @@ public sealed class OrderRepository : IOrderRepository
     public void Update(Order order) => _dbContext.Orders.Update(order);
 
     public void Remove(Order order) => _dbContext.Orders.Remove(order);
+
+    public void RemoveOrderItems(IEnumerable<OrderItem> items) => _dbContext.OrderItems.RemoveRange(items);
 }

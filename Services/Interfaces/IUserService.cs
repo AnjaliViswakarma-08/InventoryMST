@@ -4,9 +4,9 @@ namespace InventoryMS.Services.Interfaces;
 
 public interface IUserService
 {
-    Task<List<UserResponseDto>> GetAllAsync(CancellationToken cancellationToken);
+    Task<List<UserResponseDto>> GetAllAsync(int actingUserId, string actingRole, CancellationToken cancellationToken);
 
-    Task<UserResponseDto> GetByIdAsync(int userId, CancellationToken cancellationToken);
+    Task<UserResponseDto> GetByIdAsync(int userId, int actingUserId, string actingRole, CancellationToken cancellationToken);
 
     Task<UserResponseDto> CreateAsync(string actingRole, UserCreateDto dto, CancellationToken cancellationToken);
 

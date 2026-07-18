@@ -1,5 +1,4 @@
 using AutoMapper;
-using InventoryMS.Data;
 using InventoryMS.DTOs.Suppliers;
 using InventoryMS.Helpers;
 using InventoryMS.Services.Interfaces;
@@ -12,13 +11,13 @@ public sealed class SupplierService : ISupplierService
 {
     private readonly ISupplierRepository _supplierRepository;
     private readonly IMapper _mapper;
-    private readonly AppDbContext _dbContext;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public SupplierService(ISupplierRepository supplierRepository, IMapper mapper, AppDbContext dbContext)
+    public SupplierService(ISupplierRepository supplierRepository, IMapper mapper, IUnitOfWork unitOfWork)
     {
         _supplierRepository = supplierRepository;
         _mapper = mapper;
-        _dbContext = dbContext;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<List<SupplierResponseDto>> GetAllAsync(CancellationToken cancellationToken)
@@ -44,7 +43,7 @@ public sealed class SupplierService : ISupplierService
 
         var supplier = _mapper.Map<InventoryMS.Data.Models.Supplier>(dto);
         await _supplierRepository.AddAsync(supplier, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return _mapper.Map<SupplierResponseDto>(supplier);
     }
@@ -61,7 +60,7 @@ public sealed class SupplierService : ISupplierService
 
         _mapper.Map(dto, supplier);
         _supplierRepository.Update(supplier);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return _mapper.Map<SupplierResponseDto>(supplier);
     }
@@ -72,6 +71,6 @@ public sealed class SupplierService : ISupplierService
             ?? throw new NotFoundException($"Supplier {supplierId} was not found.");
 
         _supplierRepository.Remove(supplier);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

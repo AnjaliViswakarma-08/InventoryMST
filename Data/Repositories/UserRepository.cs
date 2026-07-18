@@ -33,4 +33,7 @@ public sealed class UserRepository : IUserRepository
     public void Update(User user) => _dbContext.Users.Update(user);
 
     public void Remove(User user) => _dbContext.Users.Remove(user);
+
+    public Task LoadRoleAsync(User user, CancellationToken cancellationToken) =>
+        _dbContext.Entry(user).Reference(u => u.Role).LoadAsync(cancellationToken);
 }

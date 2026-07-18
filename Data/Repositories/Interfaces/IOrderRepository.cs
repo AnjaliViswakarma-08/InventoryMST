@@ -15,4 +15,6 @@ public interface IOrderRepository
     void Update(Order order);
 
     void Remove(Order order);
+
+    void RemoveOrderItems(IEnumerable<OrderItem> items);
 }

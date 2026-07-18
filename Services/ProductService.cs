@@ -15,18 +15,18 @@ public sealed class ProductService : IProductService
     private readonly IProductRepository _productRepository;
     private readonly ISupplierRepository _supplierRepository;
     private readonly IMapper _mapper;
-    private readonly AppDbContext _dbContext;
+    private readonly IUnitOfWork _unitOfWork;
 
     public ProductService(
         IProductRepository productRepository,
         ISupplierRepository supplierRepository,
         IMapper mapper,
-        AppDbContext dbContext)
+        IUnitOfWork unitOfWork)
     {
         _productRepository = productRepository;
         _supplierRepository = supplierRepository;
         _mapper = mapper;
-        _dbContext = dbContext;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<List<ProductResponseDto>> GetAllAsync(CancellationToken cancellationToken)
@@ -63,7 +63,7 @@ public sealed class ProductService : IProductService
         product.Supplier = supplier;
 
         await _productRepository.AddAsync(product, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return _mapper.Map<ProductResponseDto>(product);
     }
@@ -89,7 +89,7 @@ public sealed class ProductService : IProductService
         _mapper.Map(dto, product);
         product.SupplierId = supplier.SupplierId;
         _productRepository.Update(product);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var refreshed = await _productRepository.GetByIdWithSupplierAsync(productId, cancellationToken)
             ?? throw new NotFoundException($"Product {productId} was not found.");
@@ -103,6 +103,6 @@ public sealed class ProductService : IProductService
             ?? throw new NotFoundException($"Product {productId} was not found.");
 
         _productRepository.Remove(product);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

@@ -13,7 +13,9 @@ namespace InventoryMS.Services;
 
 public sealed class AuthService : IAuthService
 {
-    private readonly AppDbContext _dbContext;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IUserRepository _userRepository;
+    private readonly IRoleRepository _roleRepository;
     private readonly ITokenService _tokenService;
     private readonly IPasswordHasher<User> _passwordHasher;
     private readonly IOtpRepository _otpRepository;
@@ -24,13 +26,17 @@ public sealed class AuthService : IAuthService
     private static readonly Dictionary<string, (string HashedToken, DateTime ExpiresAtUtc, string Purpose)> _resetTokens = new(StringComparer.OrdinalIgnoreCase);
 
     public AuthService(
-        AppDbContext dbContext,
+        IUnitOfWork unitOfWork,
+        IUserRepository userRepository,
+        IRoleRepository roleRepository,
         ITokenService tokenService,
         IPasswordHasher<User> passwordHasher,
         IOtpRepository otpRepository,
         IEmailService emailService)
     {
-        _dbContext = dbContext;
+        _unitOfWork = unitOfWork;
+        _userRepository = userRepository;
+        _roleRepository = roleRepository;
         _tokenService = tokenService;
         _passwordHasher = passwordHasher;
         _otpRepository = otpRepository;
@@ -39,9 +45,7 @@ public sealed class AuthService : IAuthService
 
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto dto, CancellationToken cancellationToken)
     {
-        var user = await _dbContext.Users
-            .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower(), cancellationToken);
+        var user = await _userRepository.GetByEmailAsync(dto.Email, cancellationToken);
 
         if (user is null)
         {
@@ -69,8 +73,7 @@ public sealed class AuthService : IAuthService
     public async Task SignUpAsync(SignUpRequestDto dto, CancellationToken cancellationToken)
     {
         // Check if email already registered
-        var existingUser = await _dbContext.Users
-            .AnyAsync(u => u.Email.ToLower() == dto.Email.ToLower(), cancellationToken);
+        var existingUser = await _userRepository.EmailExistsAsync(dto.Email, null, cancellationToken);
 
         if (existingUser)
         {
@@ -95,7 +98,7 @@ public sealed class AuthService : IAuthService
         };
 
         await _otpRepository.AddAsync(otpEntry, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Send OTP via email
         await _emailService.SendOtpAsync(dto.Email, otp, "Join", cancellationToken);
@@ -119,7 +122,7 @@ public sealed class AuthService : IAuthService
 
         // Mark OTP as used
         otpEntry.IsUsed = true;
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Generate a short-lived reset token
         var resetToken = GenerateResetToken();
@@ -143,8 +146,7 @@ public sealed class AuthService : IAuthService
         ValidateResetToken(dto.Email, dto.ResetToken, "Join");
 
         // Ensure email not already registered (race condition guard)
-        var existingUser = await _dbContext.Users
-            .AnyAsync(u => u.Email.ToLower() == dto.Email.ToLower(), cancellationToken);
+        var existingUser = await _userRepository.EmailExistsAsync(dto.Email, null, cancellationToken);
 
         if (existingUser)
         {
@@ -152,8 +154,7 @@ public sealed class AuthService : IAuthService
         }
 
         // Create user with ViewerStaff role by default
-        var viewerRole = await _dbContext.Roles
-            .SingleOrDefaultAsync(r => r.Name == RoleName.ViewerStaff, cancellationToken)
+        var viewerRole = await _roleRepository.GetByNameAsync(RoleName.ViewerStaff, cancellationToken)
             ?? throw new InvalidOperationException("ViewerStaff role not found. Database may not be seeded.");
 
         var user = new User
@@ -170,14 +171,14 @@ public sealed class AuthService : IAuthService
         };
         user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
 
-        await _dbContext.Users.AddAsync(user, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _userRepository.AddAsync(user, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Consume the reset token
         ConsumeResetToken(dto.Email);
 
         // Reload with role for token generation
-        await _dbContext.Entry(user).Reference(u => u.Role).LoadAsync(cancellationToken);
+        await _userRepository.LoadRoleAsync(user, cancellationToken);
 
         // Auto-login: return JWT
         var (token, expiresAtUtc) = _tokenService.CreateToken(user);
@@ -195,8 +196,7 @@ public sealed class AuthService : IAuthService
     public async Task ForgotPasswordAsync(ForgotPasswordRequestDto dto, CancellationToken cancellationToken)
     {
         // Check if user exists
-        var user = await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower(), cancellationToken);
+        var user = await _userRepository.GetByEmailAsync(dto.Email, cancellationToken);
 
         if (user is null)
         {
@@ -222,7 +222,7 @@ public sealed class AuthService : IAuthService
         };
 
         await _otpRepository.AddAsync(otpEntry, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         await _emailService.SendOtpAsync(dto.Email, otp, "ForgotPassword", cancellationToken);
     }
@@ -232,13 +232,12 @@ public sealed class AuthService : IAuthService
         // Validate reset token
         ValidateResetToken(dto.Email, dto.ResetToken, "ForgotPassword");
 
-        var user = await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower(), cancellationToken)
+        var user = await _userRepository.GetByEmailAsync(dto.Email, cancellationToken)
             ?? throw new NotFoundException("User not found.");
 
         // Update password
         user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Consume the reset token
         ConsumeResetToken(dto.Email);

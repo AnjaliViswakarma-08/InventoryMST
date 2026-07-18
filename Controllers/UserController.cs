@@ -24,7 +24,9 @@ public class UserController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<List<UserResponseDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<List<UserResponseDto>>>> GetAll(CancellationToken cancellationToken)
     {
-        var users = await _userService.GetAllAsync(cancellationToken);
+        var actingUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var actingRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        var users = await _userService.GetAllAsync(actingUserId, actingRole, cancellationToken);
         return Ok(ApiResponse<List<UserResponseDto>>.Ok(users));
     }
 
@@ -34,7 +36,9 @@ public class UserController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<UserResponseDto>), StatusCodes.Status200OK)] 
     public async Task<ActionResult<ApiResponse<UserResponseDto>>> GetById(int id, CancellationToken cancellationToken)
     {
-        var user = await _userService.GetByIdAsync(id, cancellationToken);
+        var actingUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var actingRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        var user = await _userService.GetByIdAsync(id, actingUserId, actingRole, cancellationToken);
         return Ok(ApiResponse<UserResponseDto>.Ok(user));
     }
 

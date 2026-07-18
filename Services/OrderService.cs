@@ -14,19 +14,22 @@ public sealed class OrderService : IOrderService
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IProductRepository _productRepository;
     private readonly IMapper _mapper;
-    private readonly AppDbContext _dbContext;
+    private readonly IUnitOfWork _unitOfWork;
 
     public OrderService(
         IOrderRepository orderRepository,
         IUserRepository userRepository,
+        IProductRepository productRepository,
         IMapper mapper,
-        AppDbContext dbContext)
+        IUnitOfWork unitOfWork)
     {
         _orderRepository = orderRepository;
         _userRepository = userRepository;
+        _productRepository = productRepository;
         _mapper = mapper;
-        _dbContext = dbContext;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<List<OrderResponseDto>> GetAllAsync(CancellationToken cancellationToken)
@@ -48,61 +51,75 @@ public sealed class OrderService : IOrderService
         await EnsureUserExistsAsync(dto.UserId, cancellationToken);
         ValidateItems(dto.Items);
 
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-        
-        var order = new Order
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
         {
-            UserId = dto.UserId,
-            OrderDate = DateTime.UtcNow
-        };
+            var order = new Order
+            {
+                UserId = dto.UserId,
+                OrderDate = DateTime.UtcNow
+            };
 
-        await HydrateOrderItemsAsync(order, dto.Items, cancellationToken);
-        await _orderRepository.AddAsync(order, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+            await HydrateOrderItemsAsync(order, dto.Items, cancellationToken);
+            await _orderRepository.AddAsync(order, cancellationToken);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
-        return await GetByIdAsync(order.OrderId, cancellationToken);
+            return await GetByIdAsync(order.OrderId, cancellationToken);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            throw;
+        }
     }
 
     public async Task<OrderResponseDto> UpdateAsync(int orderId, OrderCreateDto dto, CancellationToken cancellationToken)
     {
-        var order = await _dbContext.Orders
-            .Include(existing => existing.OrderItems)
-            .FirstOrDefaultAsync(existing => existing.OrderId == orderId, cancellationToken)
+        var order = await _orderRepository.GetByIdWithItemsAsync(orderId, cancellationToken)
             ?? throw new NotFoundException($"Order {orderId} was not found.");
 
         await EnsureUserExistsAsync(dto.UserId, cancellationToken);
         ValidateItems(dto.Items);
 
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-        
-        await RestoreInventoryAsync(order.OrderItems, cancellationToken);
-        _dbContext.OrderItems.RemoveRange(order.OrderItems);
-        order.OrderItems.Clear();
-        order.UserId = dto.UserId;
-        order.OrderDate = DateTime.UtcNow;
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            await RestoreInventoryAsync(order.OrderItems, cancellationToken);
+            _orderRepository.RemoveOrderItems(order.OrderItems);
+            order.OrderItems.Clear();
+            order.UserId = dto.UserId;
+            order.OrderDate = DateTime.UtcNow;
 
-        await HydrateOrderItemsAsync(order, dto.Items, cancellationToken);
-        _orderRepository.Update(order);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+            await HydrateOrderItemsAsync(order, dto.Items, cancellationToken);
+            _orderRepository.Update(order);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
-        return await GetByIdAsync(orderId, cancellationToken);
+            return await GetByIdAsync(orderId, cancellationToken);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            throw;
+        }
     }
 
     public async Task DeleteAsync(int orderId, CancellationToken cancellationToken)
     {
-        var order = await _dbContext.Orders
-            .Include(existing => existing.OrderItems)
-            .FirstOrDefaultAsync(existing => existing.OrderId == orderId, cancellationToken)
+        var order = await _orderRepository.GetByIdWithItemsAsync(orderId, cancellationToken)
             ?? throw new NotFoundException($"Order {orderId} was not found.");
 
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-        
-        await RestoreInventoryAsync(order.OrderItems, cancellationToken);
-        _orderRepository.Remove(order);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            await RestoreInventoryAsync(order.OrderItems, cancellationToken);
+            _orderRepository.Remove(order);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            throw;
+        }
     }
 
     private async Task EnsureUserExistsAsync(int userId, CancellationToken cancellationToken)
@@ -134,9 +151,7 @@ public sealed class OrderService : IOrderService
             .ToList();
 
         var productIds = groupedItems.Select(item => item.ProductId).ToArray();
-        var products = await _dbContext.Products
-            .Where(product => productIds.Contains(product.ProductId))
-            .ToListAsync(cancellationToken);
+        var products = await _productRepository.GetByIdsAsync(productIds, cancellationToken);
 
         if (products.Count != productIds.Length)
         {
@@ -167,9 +182,7 @@ public sealed class OrderService : IOrderService
     private async Task RestoreInventoryAsync(IEnumerable<OrderItem> orderItems, CancellationToken cancellationToken)
     {
         var productIds = orderItems.Select(orderItem => orderItem.ProductId).Distinct().ToArray();
-        var products = await _dbContext.Products
-            .Where(product => productIds.Contains(product.ProductId))
-            .ToListAsync(cancellationToken);
+        var products = await _productRepository.GetByIdsAsync(productIds, cancellationToken);
 
         foreach (var orderItem in orderItems)
         {

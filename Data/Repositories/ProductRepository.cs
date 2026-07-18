@@ -39,4 +39,7 @@ public sealed class ProductRepository : IProductRepository
     public void Update(Product product) => _dbContext.Products.Update(product);
 
     public void Remove(Product product) => _dbContext.Products.Remove(product);
+
+    public Task<List<Product>> GetByIdsAsync(IEnumerable<int> productIds, CancellationToken cancellationToken) =>
+        _dbContext.Products.Where(p => productIds.Contains(p.ProductId)).ToListAsync(cancellationToken);
 }
